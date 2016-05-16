@@ -260,7 +260,7 @@ RTC::ReturnCode_t IMURazor9DOF::onProcess()
 	double ry = az*hx - ax*hz;
 	double rz = ax*hy - ay*hx;
 	double r = sqrt(rx*rx + ry*ry + rz*rz);
-	double heading = -atan2(hx / h, rx / r);
+	double heading = atan2(hx / h, rx / r);
 
 	m_magnet.data[0] = heading;
 	m_magnet.data[1] = mx;
