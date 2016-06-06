@@ -245,6 +245,20 @@ class IMURazor9DOF
    */
   int m_baudrate;
 
+
+
+  double m_offset_ax;
+  double m_offset_ay;
+  double m_offset_az;
+
+  double m_offset_avx;
+  double m_offset_avy;
+  double m_offset_avz;
+
+  double m_offset_mx;
+  double m_offset_my;
+  double m_offset_mz;
+
   // </rtc-template>
 
   // DataInPort declaration
@@ -303,7 +317,8 @@ class IMURazor9DOF
 
 	RTC::ReturnCode_t onProcess();
 
-	
+
+	std::ofstream logfile;
 
 	WorkerThread* m_pThread;
 };
@@ -324,7 +339,7 @@ public:
 
 	void Run() {
 		endflag = false;
-		while(!endflag) {
+		while (!endflag) {
 			m_pRTC->onProcess();
 		}
 	}
@@ -336,6 +351,8 @@ public:
 
 	bool endflag;
 	IMURazor9DOF *m_pRTC;
+
+
 };
 
 

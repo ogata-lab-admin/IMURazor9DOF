@@ -31,7 +31,17 @@ static const char* imurazor9dof_spec[] =
     "conf.default.debug", "1",
     "conf.default.port", "\\\\.\\COM20",
     "conf.default.baudrate", "57600",
-    // Widget
+	"conf.default.offset_ax", "0.0", 
+	"conf.default.offset_ay", "0.0",
+	"conf.default.offset_az", "0.0",
+	"conf.default.offset_avx", "0.0",
+	"conf.default.offset_avy", "0.0",
+	"conf.default.offset_avz", "0.0",
+	"conf.default.offset_mx", "-56.32",
+	"conf.default.offset_my", "111.36",
+	"conf.default.offset_mz", "0.0",
+
+	// Widget
     "conf.__widget__.debug", "text",
     "conf.__widget__.port", "text",
     "conf.__widget__.baudrate", "text",
@@ -90,6 +100,17 @@ RTC::ReturnCode_t IMURazor9DOF::onInitialize()
   bindParameter("debug", m_debug, "0");
   bindParameter("port", m_port, "COM2");
   bindParameter("baudrate", m_baudrate, "57600");
+
+  bindParameter("offset_ax", m_offset_ax, "0.0");
+  bindParameter("offset_ay", m_offset_ay, "0.0");
+  bindParameter("offset_az", m_offset_az, "0.0");
+  bindParameter("offset_avx", m_offset_avx, "0.0");
+  bindParameter("offset_avy", m_offset_avy, "0.0");
+  bindParameter("offset_avz", m_offset_avz, "0.0");
+  bindParameter("offset_mx", m_offset_mx, "0.0");
+  bindParameter("offset_my", m_offset_my, "0.0");
+  bindParameter("offset_mz", m_offset_mz, "0.0");
+
   // </rtc-template>
   
   return RTC::RTC_OK;
@@ -167,12 +188,21 @@ RTC::ReturnCode_t IMURazor9DOF::onActivated(RTC::UniqueId ec_id)
 
 	m_pThread = new WorkerThread(this);
 	m_pThread->Start();
+
+	if (m_debug == 2) {
+		logfile.open("log.txt");
+		logfile << "m_accel.data.ax" << ", " << "m_accel.data.ay" << ", " << "m_accel.data.az" << ", " << "m_angularVel.data.avx" << ", " << "m_angularVel.data.avy" << ", " << "m_angularVel.data.avz" << ", " << "mx" << ", " << "my" << ", " << "mz" << std::endl;
+
+	}
 	return RTC::RTC_OK;
 }
 
 
 RTC::ReturnCode_t IMURazor9DOF::onDeactivated(RTC::UniqueId ec_id)
 {
+	if (m_debug == 2) {
+		logfile.close();
+	}
 	m_pThread->stop();
 	delete m_pSerialPort;
   return RTC::RTC_OK;
@@ -231,21 +261,21 @@ RTC::ReturnCode_t IMURazor9DOF::onProcess()
 #define PI 3.1415926
 
 	// 2G mode
-	m_accel.data.ax = ax = rax / 255.0 * G; // m/sec^2
-	m_accel.data.ay = ay = ray / 255.0 * G;
-	m_accel.data.az = az = raz / 255.0 * G;
+	m_accel.data.ax = ax = rax / 255.0 * G + m_offset_ax; // m/sec^2
+	m_accel.data.ay = ay = ray / 255.0 * G + m_offset_ay;
+	m_accel.data.az = az = raz / 255.0 * G + m_offset_az;
 	::setTimestamp<RTC::TimedAcceleration3D>(m_accel);
 	m_accelOut.write();
 
-	m_angularVel.data.avx = wx = rwx / ((double)(0x7FFF)) * 2000.0 / 180 * PI; // rad/sec
-	m_angularVel.data.avy = wy = rwy / ((double)(0x7FFF)) * 2000.0 / 180 * PI;
-	m_angularVel.data.avz = wz = rwz / ((double)(0x7FFF)) * 2000.0 / 180 * PI;
+	m_angularVel.data.avx = wx = rwx / ((double)(0x7FFF)) * 2000.0 / 180 * PI + m_offset_avx; // rad/sec
+	m_angularVel.data.avy = wy = rwy / ((double)(0x7FFF)) * 2000.0 / 180 * PI + m_offset_avy;
+	m_angularVel.data.avz = wz = rwz / ((double)(0x7FFF)) * 2000.0 / 180 * PI + m_offset_avz;
 	::setTimestamp<RTC::TimedAngularVelocity3D>(m_angularVel);
 	m_angularVelOut.write();
 
-	mx = 2.56 * rmx;
-	my = 2.56 * rmy;
-	mz = 2.56 * rmz;
+	mx = 2.56 * rmx + m_offset_mx;
+	my = 2.56 * rmy + m_offset_my;
+	mz = 2.56 * rmz + m_offset_mz;
 
 	this->m_magnet.data.length(4);
 	double a = sqrt(ax*ax + ay*ay + az*az);
@@ -279,10 +309,14 @@ RTC::ReturnCode_t IMURazor9DOF::onProcess()
 		rad += (wz + old_wz) * dt /2;
 
 		if((counter++) % 10 == 0) 
-			std::cout << "rad: " << rad << ", heading: " << heading << std::endl;
+			std::cout << "Heading (integral of wz): " << rad << ", Heading (Magnet): " << heading << std::endl;
 		old_wz = wz;
 
 		m_timestamp = currentTime;
+	}
+
+	if (m_debug == 2) {
+		logfile << m_accel.data.ax << ", " << m_accel.data.ay << ", " << m_accel.data.az << ", " << m_angularVel.data.avx << ", " << m_angularVel.data.avy << ", " << m_angularVel.data.avz << ", " << mx << ", " << my << ", " << mz << std::endl;
 	}
 	return RTC::RTC_OK;
 }
